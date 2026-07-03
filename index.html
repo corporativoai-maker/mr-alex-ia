@@ -52,7 +52,6 @@
   </div>
   <div class="status"></div>
 </div>
-
 <div class="quick-topics">
   <button class="topic-btn" onclick="sendQuick('Enséñame a presentarme en inglés')">👋 Presentaciones</button>
   <button class="topic-btn" onclick="sendQuick('¿Cómo pido comida en inglés?')">🍔 Pedir comida</button>
@@ -62,101 +61,73 @@
   <button class="topic-btn" onclick="sendQuick('¿Cómo pregunto direcciones en inglés?')">🗺️ Direcciones</button>
   <button class="topic-btn" onclick="sendQuick('Dame vocabulario básico del día a día')">📚 Vocabulario</button>
 </div>
-
 <div class="chat-container" id="chat">
   <div class="message bot">
     <div class="msg-avatar">🎓</div>
     <div class="msg-content">
       ¡Hola! Soy <strong>Mr. Alex</strong>, tu maestro de inglés personal. 🎉<br><br>
-      Veo que estás en nivel <strong>básico</strong> y quieres aprender inglés para <strong>conversaciones del día a día</strong>. ¡Perfecto, ese es el mejor punto de partida!<br><br>
-      Te enseñaré de forma práctica con ejemplos reales, traducciones y tips de pronunciación. Puedes escribirme en español o en inglés, como prefieras.<br><br>
+      Estás en nivel <strong>básico</strong> y quieres aprender inglés para <strong>conversaciones del día a día</strong>. ¡Perfecto!<br><br>
       <strong>So, shall we start? Let's go! 🚀</strong><br>
-      <em style="color:#7c7caa;font-size:0.8rem">¿Entonces, empezamos? ¡Vamos!</em><br><br>
-      <span style="background:#0f172a;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:0 8px 8px 0;display:block;font-size:0.78rem;color:#fbbf24">💡 TIP: Usa los botones de arriba para elegir un tema o escribe tu pregunta directamente.</span>
+      <em style="color:#7c7caa;font-size:0.8rem">¿Entonces, empezamos? ¡Vamos!</em>
     </div>
   </div>
 </div>
-
 <div class="input-area">
   <div class="input-wrapper">
     <textarea id="userInput" placeholder="Escribe tu pregunta en español o en inglés..." rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
   </div>
   <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
 </div>
-
 <script>
+const systemPrompt = `Eres Mr. Alex, un maestro de inglés amigable, paciente y motivador que habla español. Tu estudiante es un adulto mexicano con nivel BÁSICO de inglés que quiere aprender inglés para conversaciones del día a día.
+
+REGLAS:
+1. Responde siempre en español para explicar, con ejemplos en inglés y su traducción
+2. Usa emojis para hacer las respuestas más amigables
+3. Cada respuesta incluye: explicación en español, ejemplos en inglés con traducción, un TIP marcado con 💡 TIP: y un ejercicio práctico
+4. Sé simple y claro, sin términos técnicos
+5. Celebra cada avance con entusiasmo
+6. Corrige errores amablemente
+7. Máximo 250 palabras por respuesta`;
+
+let conversationHistory = [];
 const chat = document.getElementById('chat');
 const input = document.getElementById('userInput');
 const sendBtn = document.getElementById('sendBtn');
 
-const systemPrompt = `Eres Mr. Alex, un maestro de inglés amigable, paciente y motivador que habla español. Tu estudiante es un adulto mexicano con nivel BÁSICO de inglés que quiere aprender inglés para conversaciones del día a día.
-
-REGLAS IMPORTANTES:
-1. Siempre responde en español para explicar, pero incluye ejemplos en inglés con su traducción
-2. Usa emojis para hacer las respuestas más amigables y visuales
-3. Cada respuesta debe incluir:
-   - La explicación clara en español
-   - Ejemplos en inglés con traducción entre paréntesis o con =
-   - Un TIP de pronunciación o uso cuando sea relevante marcado con 💡 TIP:
-   - Una pregunta o ejercicio práctico al final para practicar
-4. Sé muy simple y claro, evita términos técnicos complejos
-5. Celebra cada avance del estudiante con entusiasmo
-6. Si el estudiante escribe algo en inglés, corrígelo amablemente si tiene errores y felicítalo por intentarlo
-7. Enfócate en frases útiles del día a día: saludos, presentaciones, pedir cosas, preguntar direcciones, en el trabajo, etc.
-8. Máximo 300 palabras por respuesta para no abrumar al estudiante
-9. Al final de cada lección pregunta si quiere practicar más o aprender algo nuevo`;
-
-let conversationHistory = [];
-
 async function sendMessage() {
   const text = input.value.trim();
   if (!text || sendBtn.disabled) return;
-
   addMessage(text, 'user');
   input.value = '';
   autoResize(input);
   sendBtn.disabled = true;
-
   conversationHistory.push({ role: 'user', content: text });
-
   const typingEl = addTyping();
-
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/.netlify/functions/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: conversationHistory
-      })
+      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, system: systemPrompt, messages: conversationHistory })
     });
-
     const data = await response.json();
     typingEl.remove();
-
     if (data.content && data.content[0]) {
       const reply = data.content[0].text;
       conversationHistory.push({ role: 'assistant', content: reply });
       addMessage(reply, 'bot');
     } else {
-      addError('No pude conectarme. Intenta de nuevo.');
+      addError('Error: ' + (data.error?.message || 'Intenta de nuevo'));
     }
   } catch (err) {
     typingEl.remove();
     addError('Error de conexión. Intenta de nuevo.');
   }
-
   sendBtn.disabled = false;
   input.focus();
 }
 
-function sendQuick(text) {
-  input.value = text;
-  sendMessage();
-}
-
+function sendQuick(text) { input.value = text; sendMessage(); }
 function addMessage(text, sender) {
   const div = document.createElement('div');
   div.className = `message ${sender}`;
@@ -172,7 +143,6 @@ function addMessage(text, sender) {
   chat.scrollTop = chat.scrollHeight;
   return div;
 }
-
 function formatMessage(text) {
   return text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -180,7 +150,6 @@ function formatMessage(text) {
     .replace(/💡 TIP:(.*?)(\n|$)/g, '<div style="background:#0f172a;border-left:3px solid #f59e0b;padding:8px 12px;border-radius:0 8px 8px 0;margin-top:8px;font-size:0.78rem;color:#fbbf24">💡 TIP:$1</div>')
     .replace(/\n/g, '<br>');
 }
-
 function addTyping() {
   const div = document.createElement('div');
   div.className = 'message bot';
@@ -189,7 +158,6 @@ function addTyping() {
   chat.scrollTop = chat.scrollHeight;
   return div;
 }
-
 function addError(msg) {
   const div = document.createElement('div');
   div.className = 'error-msg';
@@ -197,18 +165,8 @@ function addError(msg) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
-
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-}
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
-}
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
 </script>
 </body>
 </html>
