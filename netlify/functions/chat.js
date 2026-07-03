@@ -3,10 +3,11 @@ exports.handler = async function(event, context) {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const API_KEY = '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';
+  const API_KEY = process.env.ANTHROPIC_API_KEY;
 
   try {
     const body = JSON.parse(event.body);
+
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -18,6 +19,7 @@ exports.handler = async function(event, context) {
     });
 
     const data = await response.json();
+
     return {
       statusCode: 200,
       headers: {
